@@ -3,8 +3,7 @@ import unicodedata
 import pdfplumber
 import logging
 from typing import List, Dict, Optional, Iterator, Union
-from config import Config # Assuming Config class exists and has HEADER_HEIGHT_PERCENTAGE, FOOTER_HEIGHT_PERCENTAGE, CHUNK_SIZE, MIN_CHUNK_SIZE, OVERLAP_SENTENCE_COUNT, MAX_SENTENCE_LEN_FOR_SPLIT
-
+from config import Config 
 logger = logging.getLogger(__name__)
 
 class TextPreprocessor:
@@ -18,29 +17,29 @@ class TextPreprocessor:
         """Initialize regex patterns and OCR fixes for efficient reuse."""
         # Common Bengali OCR correction patterns. Expand this based on observed errors.
         self.ocr_fixes = {
-            'ক্স': 'ক্ষ',   # Common ligature error (kṣa)
-            'ত্র': 'ত্র',    # Example: if 'ত্র' is misread as something else, fix it. (Currently no-op)
-            'ৃ': 'ৃ',      # Example: if 'ৃ' is misread. (Currently no-op)
-            'ব্': 'ব',      # Example: if 'ব্' (ba with halant) is misread.
-            '্য': '্য',     # Example: if '্য' (ya-phala) is misread.
-            'ৎ': 'ত্',     # Khanda-ta correction (often misread)
-            '৷': '।',      # Bengali section mark sometimes misread as danda
+            'ক্স': 'ক্ষ',   
+            'ত্র': 'ত্র',    
+            'ৃ': 'ৃ',      
+            'ব্': 'ব',      
+            '্য': '্য',     
+            'ৎ': 'ত্',     
+            '৷': '।',      
             # Add more as needed, e.g., similar-looking characters:
-            # 'ণ': 'ন', 'র': 'ড়', 'ড': 'ড়', 'স': 'শ', 'ষ': 'শ' (context-dependent)
+            
         }
 
         # Compiled regex patterns for cleaning
-        # Keeps Bengali characters, ASCII alphanumeric, and specific punctuation (danda, period, exclamation, question, en/em dash, single/double quotes)
+        
         self.clean_pattern = re.compile(r'[^\u0980-\u09FF\u0020-\u007E\u0021-\u002F\u003A-\u0040\u005B-\u0060\u007B-\u007E\u2013-\u2015।\'"]')
         self.whitespace_pattern = re.compile(r'\s+')
         self.hyphen_pattern = re.compile(r'-\s*\n\s*')
-        self.punctuation_pattern = re.compile(r'[।\.!?]+') # For splitting sentences
+        self.punctuation_pattern = re.compile(r'[।\.!?]+') 
 
         # Chapter and dialogue patterns
         self.chapter_pattern = re.compile(r'(অধ্যায়|পরিচ্ছেদ)\s*[\d\u09e6-\u09ef]+|\b[\d\u09e6-\u09ef]+\.\s*[ক-হ]\b')
         self.dialogue_pattern = re.compile(r'\b(?:বলল|বলে|বললেন|কহিল|বলিল|জিজ্ঞেস করল|প্রশ্ন করল|উত্তরে বলল|উচ্চারণ করল|চিৎকার করল|কঁাদল)\b|["\'—](?:.*?)[”\']')
         
-        # Known entities for HSC Bangla 1st Paper (expand as needed)
+        # Known entities for HSC Bangla 1st Paper
         self.known_entities = {
             'অনুপম', 'কল্যাণী', 'শম্ভুনাথ', 'মামা', 'দীপু', 'রবি',
             'হরি', 'গোপাল', 'শ্যাম', 'রাম', 'সীতা', 'গীতা', 'বিনু', 'শরৎচন্দ্র'
@@ -55,23 +54,22 @@ class TextPreprocessor:
         try:
             with pdfplumber.open(pdf_path) as pdf:
                 for page_num, page in enumerate(pdf.pages, 1):
-                    # Reconstruct text from filtered words, preserving some layout with newlines
-                    # This method handles header/footer filtering internally
+                   
                     text = self._reconstruct_text_from_words(page)
 
                     tables = self._extract_tables(page)
                     
-                    if text and len(text.strip()) > self.config.MIN_CHUNK_SIZE // 2: # Min content for a page to be considered
+                    if text and len(text.strip()) > self.config.MIN_CHUNK_SIZE // 2: 
                         page_data = {
                             'text': text,
-                            'tables': tables, # Raw table data
-                            'metadata': { # Page-level metadata
-                                'page_number': page_num, # MOVED HERE: Ensure page_number is nested
+                            'tables': tables, 
+                            'metadata': { 
+                                'page_number': page_num, 
                                 'bbox': page.bbox,
                                 'word_count': len(text.split()),
                                 'char_count': len(text),
                                 'has_bengali': self._has_bengali_text(text),
-                                'has_tables_on_page': bool(tables) # Indicates if tables were found on this page
+                                'has_tables_on_page': bool(tables) 
                             }
                         }
                         pages_data.append(page_data)
@@ -106,36 +104,36 @@ class TextPreprocessor:
         reconstructed_text = []
         current_line_top = -1
         line_buffer = []
-        previous_word = None # Keep track of the previous word
+        previous_word = None 
         
         # Estimate average line height for better line break detection
         line_heights = [word['bottom'] - word['top'] for word in content_words]
         avg_line_height = sum(line_heights) / len(line_heights) if line_heights else 10
-        line_break_threshold = avg_line_height * 0.7 # A slightly higher threshold for new lines
+        line_break_threshold = avg_line_height * 0.7 
 
         for word in content_words:
             # Safely get word dimensions, defaulting to a small value if missing
             word_x0 = word.get('x0', 0)
-            word_x1 = word.get('x1', word_x0 + 1) # Default x1 if missing
-            word_width = word.get('width', 10) # Default width if missing
+            word_x1 = word.get('x1', word_x0 + 1) 
+            word_width = word.get('width', 10) 
 
             if current_line_top == -1: # First word in content_words
                 current_line_top = word['top']
                 line_buffer.append(word['text'])
-            elif word['top'] - current_line_top > line_break_threshold: # New line detected
+            elif word['top'] - current_line_top > line_break_threshold: 
                 reconstructed_text.append(" ".join(line_buffer))
                 line_buffer = [word['text']]
                 current_line_top = word['top']
-            else: # Same line, check for space
-                # Add space if there's a significant horizontal gap from the previous word
+            else: 
+                
                 if previous_word:
                     prev_word_x1 = previous_word.get('x1', previous_word.get('x0', 0) + 1)
-                    if word_x0 - prev_word_x1 > word_width * 0.5: # Use current word's width for gap comparison
-                        line_buffer.append(" ") # Add an explicit space for larger gaps
+                    if word_x0 - prev_word_x1 > word_width * 0.5: 
+                        line_buffer.append(" ") 
                 line_buffer.append(word['text'])
-            previous_word = word # Update previous_word for the next iteration
+            previous_word = word 
         
-        if line_buffer: # Add the last line
+        if line_buffer: 
             reconstructed_text.append(" ".join(line_buffer))
 
         return "\n".join(reconstructed_text)
@@ -144,8 +142,7 @@ class TextPreprocessor:
     def _extract_tables(self, page) -> List[List[List[str]]]:
         """Extract table data if present."""
         try:
-            # pdfplumber.extract_tables() returns a list of tables, each table is a list of rows,
-            # and each row is a list of cell strings.
+            
             return page.extract_tables() or []
         except Exception as e:
             logger.warning(f"Could not extract tables from page {page.page_number}: {e}")
@@ -163,27 +160,27 @@ class TextPreprocessor:
         if not text:
             return ""
 
-        # 1. Normalize Unicode to NFC (Canonical Composition)
+        
         text = unicodedata.normalize('NFC', text)
 
-        # 2. Apply OCR error fixes
+        
         for wrong, correct in self.ocr_fixes.items():
             text = text.replace(wrong, correct)
 
-        # 3. De-hyphenate line breaks (e.g., "দেশ-" + "\n" + "প্রেম" -> "দেশপ্রেম")
+        
         text = self.hyphen_pattern.sub('', text)
         
-        # 4. Replace multiple newlines/carriage returns with a single space
+        
         text = re.sub(r'[\n\r]+', ' ', text)
 
-        # 5. Normalize all whitespace (tabs, multiple spaces) to single spaces
+        
         text = self.whitespace_pattern.sub(' ', text)
 
-        # 6. Remove unwanted characters based on the pre-compiled pattern
+        
         text = self.clean_pattern.sub(' ', text)
 
-        # 7. Consolidate excessive punctuation (e.g., "।।।" -> "।")
-        text = self.punctuation_pattern.sub('।', text) # Use Bengali danda as standard
+        
+        text = self.punctuation_pattern.sub('।', text) 
 
         return text.strip()
 
@@ -208,19 +205,19 @@ class TextPreprocessor:
                 chunks.append(chunk_data)
                 chunk_id += 1
         
-        # Post-processing to merge small trailing chunks (re-added for robustness)
+        # Post-processing to merge small trailing chunks 
         final_chunks = []
         i = 0
         while i < len(chunks):
             current_chunk = chunks[i]
-            # If current chunk is too small and there's a next chunk to merge with
+            
             if len(current_chunk['text']) < self.config.MIN_CHUNK_SIZE and i + 1 < len(chunks):
                 next_chunk = chunks[i+1]
                 merged_text = current_chunk['text'] + " " + next_chunk['text']
                 
-                # Only merge if the combined chunk doesn't become excessively large
-                if len(merged_text) <= self.config.CHUNK_SIZE * 1.5: # Allow up to 150% of target chunk size
-                    # Create a new metadata dict for the merged chunk
+                
+                if len(merged_text) <= self.config.CHUNK_SIZE * 1.5: 
+                    
                     merged_metadata = current_chunk['metadata'].copy()
                     next_metadata = next_chunk['metadata'].copy()
 
@@ -236,22 +233,19 @@ class TextPreprocessor:
                         merged_metadata.get('has_tables_on_page', False) or 
                         next_metadata.get('has_tables_on_page', False)
                     )
-                    # Update character and word counts for the merged chunk
+                    
                     merged_metadata['char_count'] = len(merged_text)
                     merged_metadata['word_count'] = len(merged_text.split())
                     
-                    # For page_number, if merged across pages, you might want a range or the first page.
-                    # For simplicity, we'll keep the page number of the first chunk.
-                    # merged_metadata['page_number'] = current_chunk['metadata']['page_number'] 
-                    # (This is already in merged_metadata from the copy)
+                    
 
                     merged_chunk_data = {
-                        'id': current_chunk['id'], # Keep the ID of the first chunk
+                        'id': current_chunk['id'], 
                         'text': merged_text,
                         'metadata': merged_metadata
                     }
                     final_chunks.append(merged_chunk_data)
-                    i += 2 # Skip the next chunk as it's merged
+                    i += 2 
                 else:
                     final_chunks.append(current_chunk)
                     i += 1
@@ -285,10 +279,9 @@ class TextPreprocessor:
 
             sentence_len = len(sentence)
 
-            # Check if adding this sentence exceeds chunk size
-            # and if the current chunk is not empty and already reasonably sized
+            
             if (current_chunk_char_count + sentence_len > self.config.CHUNK_SIZE and
-                current_chunk_char_count > self.config.MIN_CHUNK_SIZE): # Ensure current chunk is not too small before breaking
+                current_chunk_char_count > self.config.MIN_CHUNK_SIZE): 
                 
                 # Yield current chunk
                 chunk_text = " ".join(current_chunk_sentences)
@@ -305,7 +298,7 @@ class TextPreprocessor:
             else:
                 # Add sentence to current chunk
                 current_chunk_sentences.append(sentence)
-                current_chunk_char_count += sentence_len + (1 if current_chunk_char_count > 0 else 0) # Add 1 for space if not first sentence
+                current_chunk_char_count += sentence_len + (1 if current_chunk_char_count > 0 else 0) 
 
         # Yield final chunk if it meets minimum size
         if current_chunk_sentences:
@@ -319,9 +312,9 @@ class TextPreprocessor:
         Approximates word count based on character chunk size.
         """
         words = text.split()
-        # Approximate words per chunk based on average word length (e.g., 5 chars/word)
+        
         chunk_size_words = max(1, self.config.CHUNK_SIZE // 5)
-        overlap_words = max(0, self.config.OVERLAP // 5) # Use OVERLAP from config for word-based
+        overlap_words = max(0, self.config.OVERLAP // 5) 
 
         step = max(1, chunk_size_words - overlap_words)
 
@@ -337,9 +330,7 @@ class TextPreprocessor:
         Smart sentence splitting for Bengali text, using common punctuation
         and heuristic for very long sentences.
         """
-        # Primary split on Bengali danda (।), English periods (.), exclamation marks (!), question marks (?)
-        # The regex `(?<=[।\.!?])\s*` splits *after* the punctuation and any whitespace.
-        # `|\n\n+` also splits at paragraph breaks (two or more newlines).
+        
         sentences = re.split(r'(?<=[।\.!?])\s*|\n\n+', text)
         
         refined_sentences = []
@@ -348,18 +339,15 @@ class TextPreprocessor:
             if not sentence:
                 continue
             
-            # Heuristic: If a sentence is extremely long, try to split at common Bengali conjunctions
-            # or discourse markers to prevent very large "sentences" that are actually multiple thoughts.
+            
             if len(sentence) > self.config.MAX_SENTENCE_LEN_FOR_SPLIT:
-                # Split at common conjunctions/connectors if they are followed by a space
-                # and don't seem to be part of an abbreviation or number.
-                # Adding word boundaries \b to conjunctions to prevent splitting within words.
+                
                 sub_parts = re.split(r'(?<!\d)(?:[,;:]|\bএবং\b|\bকিন্তু\b|\bতবে\b|\bঅথচ\b|\bযদিও\b|\bকারণ\b|\bফলে\b|\bএজন্য\b|\bতাছাড়া\b)\s*', sentence)
                 sub_parts = [s.strip() for s in sub_parts if s.strip()]
-                if len(sub_parts) > 1: # Only extend if actual splits occurred
+                if len(sub_parts) > 1: 
                     refined_sentences.extend(sub_parts)
                 else:
-                    refined_sentences.append(sentence) # No effective split, keep as is
+                    refined_sentences.append(sentence) 
             else:
                 refined_sentences.append(sentence)
 
@@ -370,13 +358,13 @@ class TextPreprocessor:
         Create chunk with rich metadata, ensuring all metadata fields are nested
         under the 'metadata' key for compatibility with vector databases.
         """
-        # Start with a copy of page-level metadata to inherit page_number, bbox, etc.
+        
         chunk_metadata = page_data['metadata'].copy()
         
-        # Add/update chunk-specific metadata
+        
         chunk_metadata.update({
-            'page_number': page_data['metadata']['page_number'], # CORRECTED: Access page_number from page_data['metadata']
-            'sentence_count': len(self._split_bengali_sentences(text)), # Recalculate for the chunk text
+            'page_number': page_data['metadata']['page_number'], 
+            'sentence_count': len(self._split_bengali_sentences(text)), 
             'char_count': len(text),
             'word_count': len(text.split()),
             'chapter': self._extract_chapter_info(text),
@@ -433,11 +421,10 @@ class TextPreprocessor:
 
         vocabulary_richness = unique_words / total_words if total_words > 0 else 0.0
         
-        # Normalize avg_sentence_length (e.g., max expected 25 words per sentence)
+        
         normalized_avg_sentence_length = min(avg_sentence_length / 25.0, 1.0)
 
-        # Combine factors for a simple complexity score
-        # You might want to tune weights or use more sophisticated metrics
+        
         complexity_score = (vocabulary_richness * 0.5) + (normalized_avg_sentence_length * 0.5)
         return complexity_score
 
@@ -445,10 +432,10 @@ class TextPreprocessor:
         """Complete PDF processing pipeline: extraction, cleaning, and intelligent chunking."""
         logger.info(f"Starting PDF processing: {pdf_path}")
 
-        # Extract pages with initial cleaning and header/footer removal
+        
         pages_data = self.extract_text_from_pdf(pdf_path)
 
-        # Create semantic chunks with metadata
+        
         chunks = self.smart_chunk_text(pages_data)
 
         logger.info(f"Processing complete: {len(chunks)} chunks created for {pdf_path}")

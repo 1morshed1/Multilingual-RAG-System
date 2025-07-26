@@ -64,7 +64,7 @@ def create_interface():
         
         # Chat interface
         chatbot = gr.ChatInterface(
-            fn=qa_interface,  # This is now synchronous
+            fn=qa_interface,  
             examples=[
                 "অনুপমের ভাষায় সুপুরুষ কাকে বলা হয়েছে?",
                 "কাকে অনুপমের ভাগ্য দেবতা বলে উল্লেখ করা হয়েছে?",

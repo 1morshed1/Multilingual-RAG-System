@@ -3,7 +3,7 @@ from typing import List, Dict, Optional, Any
 from config import Config
 from langdetect import detect
 import json
-import requests # Import the requests library
+import requests 
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -23,7 +23,7 @@ class RAGPipeline:
             bengali_chars = len([c for c in text if '\u0980' <= c <= '\u09FF'])
             return 'bn' if bengali_chars > 0 else 'en'
 
-    # Changed from async def to def
+    
     def generate_answer(self, query: str, contexts: List[Dict],
                               conversation_history: Optional[List[Dict]] = None) -> Dict[str, Any]:
         """Enhanced answer generation with better context handling using Gemini API"""
@@ -66,14 +66,14 @@ class RAGPipeline:
         apiUrl = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={apiKey}"
 
         try:
-            # Use requests.post for synchronous HTTP request
+            
             response = requests.post(apiUrl, headers={'Content-Type': 'application/json'}, json=payload)
-            response.raise_for_status() # Raise HTTPError for bad responses (4xx or 5xx)
+            response.raise_for_status() 
 
-            # --- DEBUGGING: Log raw response text ---
+            
             response_text = response.text
             logger.error(f"Raw API response text: {response_text}")
-            # --- END DEBUGGING ---
+            
 
             result = response.json() # Parse JSON directly
 

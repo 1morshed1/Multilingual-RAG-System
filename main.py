@@ -97,6 +97,4 @@ if __name__ == "__main__":
         print(f"🔍 Confidence: {result['confidence']:.2f}")
         print(f"📚 Sources: {result['context_count']} chunks")
         
-        # Optional: Print source pages
-        # for source in result['sources']:
-        #     print(f"   - Page: {source['page_number']}")
+        

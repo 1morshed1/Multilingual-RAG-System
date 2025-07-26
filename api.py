@@ -3,7 +3,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
 
-# Import your MultilingualRAGSystem from main.py
+
 from main import MultilingualRAGSystem
 
 # Configure logging
@@ -32,15 +32,12 @@ async def startup_event():
     rag_system = MultilingualRAGSystem()
     logger.info("Attempting to initialize MultilingualRAGSystem...")
     try:
-        # Set force_rebuild=False for production to avoid rebuilding on every startup
-        # Set to True if you want to force rebuild the vector store every time the API starts
+        
         rag_system.initialize(force_rebuild=False)
         logger.info("MultilingualRAGSystem initialized successfully.")
     except Exception as e:
         logger.error(f"Failed to initialize MultilingualRAGSystem: {e}", exc_info=True)
-        # In a real production scenario, you might want to exit or disable endpoints
-        # if initialization fails critically. For now, we'll log and allow API to start,
-        # but queries will return an error.
+        
 
 # Pydantic model for conversation turns
 class ConversationTurn(BaseModel):
@@ -50,7 +47,7 @@ class ConversationTurn(BaseModel):
 # Pydantic model for the API request body
 class QueryRequest(BaseModel):
     query: str = Field(..., min_length=1, description="The user's query in Bengali or English.")
-    # Optional: conversation_history allows for multi-turn conversations
+    
     conversation_history: Optional[List[ConversationTurn]] = Field(
         None, description="Previous conversation turns to provide context for the current query."
     )
@@ -65,7 +62,7 @@ class QueryResponse(BaseModel):
     context_count: int = Field(..., description="Number of context chunks retrieved.")
     error: Optional[str] = Field(None, description="Error message if an issue occurred.")
 
-# New: Root endpoint to confirm API is running
+
 @app.get("/")
 async def read_root():
     """
@@ -89,22 +86,17 @@ async def process_query(request: QueryRequest):
 
     logger.info(f"Received query: '{request.query}'")
     
-    # Convert Pydantic ConversationTurn objects to plain dictionaries
-    # This is important because rag_pipeline expects plain dicts, not Pydantic models
+    
     formatted_history = []
     if request.conversation_history:
         for turn in request.conversation_history:
             formatted_history.append({"role": turn.role, "content": turn.content})
 
     try:
-        # Call the RAG system's query method
-        # Pass the formatted_history to the rag_pipeline's generate_answer method
-        # The rag_system.query method itself handles passing history to rag_pipeline
+        
         response_data = rag_system.query(request.query)
 
-        # The rag_system.query method already returns a dictionary matching QueryResponse structure
-        # We just need to ensure the `sources` field is correctly formatted if it's a list of dicts.
-        # It already is based on your `RAGPipeline`'s return structure.
+        
 
         return QueryResponse(
             query=response_data['query'],
@@ -118,10 +110,8 @@ async def process_query(request: QueryRequest):
         logger.error(f"Error processing query '{request.query}': {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
 
-# Example of how to run this API (add this to the bottom of your api.py file, outside the app definition)
+
 if __name__ == "__main__":
     import uvicorn
-    # To run the API, save this file as api.py and then run:
-    # uvicorn api:app --host 0.0.0.0 --port 8000 --reload
-    # --reload is good for development, removes in production
+    
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -11,4 +11,4 @@ python-dotenv==1.0.0
 numpy>=1.21.0
 fastapi>=0.104.0 
 pydantic>=2.0   
-uvicorn>=0.23.2 # Add this line
+uvicorn>=0.23.2 

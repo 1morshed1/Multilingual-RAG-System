@@ -41,7 +41,7 @@ class OptimizedVectorStore:
             # Prepare data for ChromaDB
             ids = [chunk['id'] for chunk in chunks]
             documents = texts
-            # Correctly prepare metadata by accessing nested 'metadata' key
+            
             metadatas = [self._prepare_metadata(chunk) for chunk in chunks]
 
             # Add to collection
@@ -64,20 +64,20 @@ class OptimizedVectorStore:
         accessed from the nested 'metadata' dictionary within the chunk and
         defaulting to non-None values if a key is missing or its value is None.
         """
-        chunk_metadata = chunk.get('metadata', {}) # Get the nested metadata dictionary
+        chunk_metadata = chunk.get('metadata', {}) 
 
         return {
-            'page_number': chunk_metadata.get('page_number', 0), # Default to 0
-            'sentence_count': chunk_metadata.get('sentence_count', 0), # Default to 0
-            'char_count': chunk_metadata.get('char_count', 0), # Default to 0
-            'word_count': chunk_metadata.get('word_count', 0), # Default to 0
-            'has_tables_on_page': chunk_metadata.get('has_tables_on_page', False), # Default to False
-            'source': chunk_metadata.get('source', ""), # Default to empty string
-            'chapter': chunk_metadata.get('chapter', ""), # Default to empty string
-            'contains_dialogue': chunk_metadata.get('contains_dialogue', False), # Default to False
-            'named_entities': ','.join(chunk_metadata.get('named_entities', [])), # Default to empty list for join
-            'bengali_percentage': chunk_metadata.get('bengali_percentage', 0.0), # Default to 0.0
-            'complexity_score': chunk_metadata.get('complexity_score', 0.0) # Default to 0.0
+            'page_number': chunk_metadata.get('page_number', 0),
+            'sentence_count': chunk_metadata.get('sentence_count', 0), 
+            'char_count': chunk_metadata.get('char_count', 0), 
+            'word_count': chunk_metadata.get('word_count', 0), 
+            'has_tables_on_page': chunk_metadata.get('has_tables_on_page', False), 
+            'source': chunk_metadata.get('source', ""), 
+            'chapter': chunk_metadata.get('chapter', ""), 
+            'contains_dialogue': chunk_metadata.get('contains_dialogue', False), 
+            'named_entities': ','.join(chunk_metadata.get('named_entities', [])), 
+            'bengali_percentage': chunk_metadata.get('bengali_percentage', 0.0), 
+            'complexity_score': chunk_metadata.get('complexity_score', 0.0) 
         }
 
     def retrieve(self, query: str, top_k: int = None) -> List[Dict]:
@@ -92,7 +92,7 @@ class OptimizedVectorStore:
             # Retrieve from vector store
             results = self.collection.query(
                 query_embeddings=query_embedding.tolist(),
-                n_results=min(top_k * 2, 10)  # Get more candidates for re-ranking
+                n_results=min(top_k * 2, 10)  
             )
 
             # Re-rank results based on multiple factors
@@ -121,26 +121,24 @@ class OptimizedVectorStore:
         query_lower = query.lower()
 
         for candidate in candidates:
-            score = 1.0 - candidate['distance']  # Base similarity score
+            score = 1.0 - candidate['distance']  
             text_lower = candidate['text'].lower()
 
             # Boost score for exact keyword matches
             if any(word in text_lower for word in query_lower.split()):
                 score += 0.1
 
-            # Boost score for named entity matches
-            # Ensure 'named_entities' is a string before splitting, as it's stored as a comma-separated string
+            
             entities_str = candidate['metadata'].get('named_entities', '')
             entities = [e.strip() for e in entities_str.split(',') if e.strip()]
             if any(entity.lower() in query_lower for entity in entities):
                 score += 0.15
 
-            # Boost score for dialogue if query seems to ask about speech/conversation
-            # Use 'contains_dialogue' for consistency with TextPreprocessor
+            
             if candidate['metadata'].get('contains_dialogue', False) and any(word in query_lower for word in ['বলে', 'বলল', 'বললেন']): # Default to False
                 score += 0.05
 
             candidate['final_score'] = score
 
-        # Sort by final score
+        
         return sorted(candidates, key=lambda x: x['final_score'], reverse=True)
