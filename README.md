@@ -85,6 +85,72 @@ Follow these steps to get the system up and running on your local machine.
 
    Replace `"YOUR_GEMINI_API_KEY_HERE"` with your actual API key.
 
+## 🐳 Running with Docker
+
+You can also run this project using Docker, which simplifies the setup process by containerizing the application and its dependencies.
+
+### Prerequisites
+
+- Docker installed on your system
+- Docker Compose (optional, but recommended)
+
+### Building the Docker Image
+
+To build the Docker image, run the following command from the project root:
+
+```bash
+docker build -t multilingual-rag-system .
+```
+
+### Running the Container
+
+#### Option 1: Running with Gradio Interface (Default)
+
+To run the application with the Gradio web interface:
+
+```bash
+docker run -p 7860:7860 -p 8000:8000 --env-file .env -v $(pwd)/pdfs:/app/pdfs -v $(pwd)/chromadb:/app/chromadb multilingual-rag-system
+```
+
+This command will:
+
+- Map port 7860 for the Gradio interface
+- Map port 8000 for the FastAPI backend
+- Load environment variables from your `.env` file
+- Mount the `pdfs` directory for PDF input
+- Mount the `chromadb` directory for persistent vector storage
+
+After running, open your web browser to `http://localhost:7860` to access the Gradio interface.
+
+#### Option 2: Running with FastAPI Only
+
+To run only the FastAPI backend:
+
+```bash
+docker run -p 8000:8000 --env-file .env -v $(pwd)/pdfs:/app/pdfs -v $(pwd)/chromadb:/app/chromadb multilingual-rag-system uvicorn api:app --host 0.0.0.0 --port 8000
+```
+
+After running, you can access:
+
+- **Interactive API Documentation (Swagger UI)**: `http://localhost:8000/docs`
+- **ReDoc Documentation**: `http://localhost:8000/redoc`
+- **Root Endpoint (Welcome Message)**: `http://localhost:8000/`
+
+### Docker Volumes
+
+The Docker container uses two volumes for persistent data:
+
+1. **PDFs Volume**: Mounts the `pdfs` directory to `/app/pdfs` in the container, allowing you to add or modify PDF files without rebuilding the image.
+2. **ChromaDB Volume**: Mounts the `chromadb` directory to `/app/chromadb` in the container, preserving the vector database between container runs.
+
+### Environment Variables
+
+When running with Docker, you need to provide your Gemini API key through the `.env` file or by setting it directly:
+
+```bash
+docker run -p 7860:7860 -p 8000:8000 -e GEMINI_API_KEY="your-api-key-here" -v $(pwd)/pdfs:/app/pdfs -v $(pwd)/chromadb:/app/chromadb multilingual-rag-system
+```
+
 ## 🏃 How to Run
 
 ### 1. Initialize the RAG System (Process PDF and Build Vector Store)
